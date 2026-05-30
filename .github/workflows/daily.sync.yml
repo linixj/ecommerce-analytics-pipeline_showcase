@@ -1,0 +1,47 @@
+name: Daily Ecommerce Sync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write Google credentials
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
+
+      - name: Refresh Etsy token
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ETSY_API_KEY: ${{ secrets.ETSY_API_KEY }}
+          ETSY_SHARED_SECRET: ${{ secrets.ETSY_SHARED_SECRET }}
+          ETSY_REFRESH_TOKEN: ${{ secrets.ETSY_REFRESH_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python src/refresh_etsy_token.py
+      
+      - name: Run sync
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          SQUARESPACE_API_KEY: ${{ secrets.SQUARESPACE_API_KEY }}
+          ETSY_API_KEY: ${{ secrets.ETSY_API_KEY }}
+          ETSY_SHARED_SECRET: ${{ secrets.ETSY_SHARED_SECRET }}
+          ETSY_ACCESS_TOKEN: ${{ secrets.ETSY_ACCESS_TOKEN }}
+          ETSY_REFRESH_TOKEN: ${{ secrets.ETSY_REFRESH_TOKEN }}
+          ETSY_SHOP_ID: ${{ secrets.ETSY_SHOP_ID }}
+          ETSY_SHOP_NAME: ${{ secrets.ETSY_SHOP_NAME }}
+          GOOGLE_CREDENTIALS_PATH: ./credentials.json
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+        run: python src/fetch_orders.py --days 1
